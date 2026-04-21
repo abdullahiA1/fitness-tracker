@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FitTrack</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --bg2: #1a1a22;
+    --bg3: #222230;
+    --card: #1e1e2a;
+    --border: #2e2e3e;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43d9a2;
+    --accent4: #ffa94d;
+    --text: #e8e8f0;
+    --text2: #9898b0;
+    --text3: #5a5a72;
+    --red: #ff5252;
+    --green: #43d9a2;
+    --yellow: #ffa94d;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --nav-h: 64px;
+    --header-h: 56px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; }
+
+  /* ─── Header ─── */
+  #app-header {
+    position: sticky; top: 0; z-index: 100;
+    height: var(--header-h);
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    backdrop-filter: blur(12px);
+  }
+  #app-header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--accent); }
+  #header-date { font-size: 13px; color: var(--text2); }
+  #date-nav { display: flex; align-items: center; gap: 8px; }
+  #date-nav button { background: var(--bg3); border: none; color: var(--text2); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  #date-nav button:active { opacity: 0.7; }
+
+  /* ─── Main content ─── */
+  #main-content {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding-bottom: calc(var(--nav-h) + 16px);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ─── Bottom Nav ─── */
+  #bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    height: var(--nav-h);
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; cursor: pointer; border: none; background: transparent;
+    color: var(--text3); font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+    text-transform: uppercase; transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-tab .nav-icon { font-size: 20px; }
+  .nav-tab.active { color: var(--accent); }
+  .nav-tab.active .nav-icon { filter: drop-shadow(0 0 6px var(--accent)); }
+
+  /* ─── Pages ─── */
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* ─── Cards ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--text2);
+    margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title span { color: var(--accent); }
+
+  /* ─── Form elements ─── */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    padding: 10px 12px; font-size: 15px; outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field input[type=number] { -moz-appearance: textfield; }
+  .field input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .field textarea { resize: none; min-height: 72px; font-family: inherit; }
+  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239898b0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+  /* Row layout */
+  .row { display: flex; gap: 10px; }
+  .row .field { flex: 1; min-width: 0; }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 14px;
+    cursor: pointer; padding: 10px 18px; transition: opacity 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { opacity: 0.8; transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-ghost { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-full { width: 100%; }
+
+  /* ─── Sliders / mood/energy ─── */
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; background: var(--bg3); border-radius: 2px; outline: none; }
+  .slider-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 2px 8px rgba(108,99,255,0.4); }
+  .slider-row input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; }
+  .slider-val { min-width: 28px; text-align: center; font-weight: 700; color: var(--accent); font-size: 15px; }
+
+  /* ─── Macro bars ─── */
+  .macro-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .macro-item { text-align: center; }
+  .macro-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .macro-val { font-size: 20px; font-weight: 700; }
+  .macro-bar { height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .macro-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  /* ─── Dashboard summary ─── */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi-card { background: var(--bg3); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
+  .kpi-val { font-size: 26px; font-weight: 800; line-height: 1; }
+  .kpi-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* ─── Training log ─── */
+  .exercise-block { background: var(--bg3); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; position: relative; }
+  .exercise-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .exercise-name { font-weight: 700; font-size: 15px; }
+  .sets-table { width: 100%; border-collapse: collapse; }
+  .sets-table th { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 6px; text-align: center; }
+  .sets-table td { padding: 4px 4px; }
+  .sets-table input { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 7px 4px; font-size: 14px; text-align: center; width: 100%; outline: none; }
+  .sets-table input:focus { border-color: var(--accent); }
+  .set-num { font-size: 12px; color: var(--text3); text-align: center; padding-top: 2px; }
+  .del-set-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; padding: 4px; }
+
+  /* ─── Weekly charts ─── */
+  .chart-container { position: relative; height: 200px; margin: 8px 0 4px; }
+
+  /* ─── Goals ─── */
+  .goal-item { background: var(--bg3); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; }
+  .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .goal-name { font-weight: 700; font-size: 15px; }
+  .goal-type-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 10px; }
+  .goal-progress-bar { height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+  .goal-progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .goal-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); }
+
+  /* ─── History list ─── */
+  .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .history-item:last-child { border-bottom: none; }
+  .history-date { font-size: 13px; color: var(--text2); }
+  .history-vals { text-align: right; font-size: 13px; }
+
+  /* ─── Tag pills ─── */
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .pill-accent { background: rgba(108,99,255,0.2); color: var(--accent); }
+  .pill-green { background: rgba(67,217,162,0.15); color: var(--green); }
+  .pill-red { background: rgba(255,82,82,0.15); color: var(--red); }
+  .pill-yellow { background: rgba(255,169,77,0.15); color: var(--yellow); }
+
+  /* ─── Section divider ─── */
+  .section-divider { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text3); margin: 18px 0 10px; }
+
+  /* ─── Empty state ─── */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ─── Toast ─── */
+  #toast {
+    position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s; z-index: 200;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ─── Modal ─── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300;
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--bg2); border-radius: var(--radius) var(--radius) 0 0;
+    padding: 20px; width: 100%; max-height: 85vh; overflow-y: auto;
+    transform: translateY(40px); transition: transform 0.2s;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+
+  /* ─── Cardio block ─── */
+  .cardio-block { background: var(--bg3); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; }
+  .cardio-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+
+  /* ─── Tabs within page ─── */
+  .inner-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .inner-tab { flex: 1; text-align: center; padding: 8px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border: 1px solid var(--border); background: var(--bg3); color: var(--text3); transition: all 0.15s; }
+  .inner-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header id="app-header">
+  <h1>FitTrack</h1>
+  <div id="date-nav">
+    <button id="prev-day">‹</button>
+    <div id="header-date"></div>
+    <button id="next-day">›</button>
+  </div>
+</header>
+
+<!-- Main -->
+<main id="main-content">
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="card" id="dash-greeting-card">
+      <div id="dash-greeting" style="font-size:17px;font-weight:700;margin-bottom:4px;"></div>
+      <div id="dash-date-full" style="font-size:13px;color:var(--text2);"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Today's Overview</div>
+      <div class="kpi-grid" id="dash-kpis"></div>
+    </div>
+    <div class="card" id="dash-macros-card">
+      <div class="card-title">Macros</div>
+      <div class="macro-grid" id="dash-macros"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Training</div>
+      <div id="dash-training"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Streak &amp; Goals</div>
+      <div id="dash-goals"></div>
+    </div>
+  </div>
+
+  <!-- DAILY LOG -->
+  <div class="page" id="page-daily">
+    <div class="card">
+      <div class="card-title">Body</div>
+      <div class="row">
+        <div class="field">
+          <label>Weight (lbs)</label>
+          <input type="number" id="dl-weight" placeholder="175" step="0.1">
+        </div>
+        <div class="field">
+          <label>Body Fat %</label>
+          <input type="number" id="dl-bodyfat" placeholder="18" step="0.1">
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Nutrition</div>
+      <div class="row">
+        <div class="field">
+          <label>Calories</label>
+          <input type="number" id="dl-calories" placeholder="2000">
+        </div>
+        <div class="field">
+          <label>Water (oz)</label>
+          <input type="number" id="dl-water" placeholder="64">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Protein (g)</label>
+          <input type="number" id="dl-protein" placeholder="150">
+        </div>
+        <div class="field">
+          <label>Carbs (g)</label>
+          <input type="number" id="dl-carbs" placeholder="200">
+        </div>
+        <div class="field">
+          <label>Fat (g)</label>
+          <input type="number" id="dl-fat" placeholder="65">
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Recovery</div>
+      <div class="row">
+        <div class="field">
+          <label>Sleep (hrs)</label>
+          <input type="number" id="dl-sleep" placeholder="7.5" step="0.5">
+        </div>
+        <div class="field">
+          <label>Sleep Quality</label>
+          <select id="dl-sleep-quality">
+            <option value="">—</option>
+            <option value="poor">Poor</option>
+            <option value="fair">Fair</option>
+            <option value="good">Good</option>
+            <option value="great">Great</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Energy Level</label>
+        <div class="slider-row">
+          <span style="font-size:13px;color:var(--text3);">1</span>
+          <input type="range" id="dl-energy" min="1" max="10" value="5">
+          <span style="font-size:13px;color:var(--text3);">10</span>
+          <span class="slider-val" id="dl-energy-val">5</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Mood</label>
+        <div class="slider-row">
+          <span style="font-size:13px;color:var(--text3);">1</span>
+          <input type="range" id="dl-mood" min="1" max="10" value="5">
+          <span style="font-size:13px;color:var(--text3);">10</span>
+          <span class="slider-val" id="dl-mood-val">5</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Stress</label>
+        <div class="slider-row">
+          <span style="font-size:13px;color:var(--text3);">1</span>
+          <input type="range" id="dl-stress" min="1" max="10" value="5">
+          <span style="font-size:13px;color:var(--text3);">10</span>
+          <span class="slider-val" id="dl-stress-val">5</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Notes</div>
+      <div class="field">
+        <textarea id="dl-notes" placeholder="How did you feel today? Anything notable..."></textarea>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" id="save-daily-btn" style="margin-bottom:8px;">Save Daily Log</button>
+  </div>
+
+  <!-- TRAINING LOG -->
+  <div class="page" id="page-training">
+    <div class="inner-tabs">
+      <div class="inner-tab active" id="train-tab-strength" onclick="switchTrainTab('strength')">Strength</div>
+      <div class="inner-tab" id="train-tab-cardio" onclick="switchTrainTab('cardio')">Cardio</div>
+      <div class="inner-tab" id="train-tab-history" onclick="switchTrainTab('history')">History</div>
+    </div>
+
+    <!-- Strength panel -->
+    <div id="train-panel-strength">
+      <div class="card">
+        <div class="card-title">Workout Details</div>
+        <div class="row">
+          <div class="field">
+            <label>Type</label>
+            <select id="wk-type">
+              <option value="Push">Push</option>
+              <option value="Pull">Pull</option>
+              <option value="Legs">Legs</option>
+              <option value="Upper">Upper</option>
+              <option value="Lower">Lower</option>
+              <option value="Full Body">Full Body</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Duration (min)</label>
+            <input type="number" id="wk-duration" placeholder="60">
+          </div>
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <input type="text" id="wk-notes" placeholder="e.g. Felt strong today...">
+        </div>
+      </div>
+      <div id="exercises-container"></div>
+      <button class="btn btn-ghost btn-full" id="add-exercise-btn" style="margin-bottom:10px;">+ Add Exercise</button>
+      <button class="btn btn-primary btn-full" id="save-training-btn">Save Workout</button>
+    </div>
+
+    <!-- Cardio panel -->
+    <div id="train-panel-cardio" style="display:none;">
+      <div id="cardio-container"></div>
+      <button class="btn btn-ghost btn-full" id="add-cardio-btn" style="margin-bottom:10px;">+ Add Cardio</button>
+      <button class="btn btn-primary btn-full" id="save-cardio-btn">Save Cardio</button>
+    </div>
+
+    <!-- History panel -->
+    <div id="train-panel-history" style="display:none;">
+      <div id="training-history-list"></div>
+    </div>
+  </div>
+
+  <!-- WEEKLY STATS -->
+  <div class="page" id="page-stats">
+    <div class="card">
+      <div class="card-title">Weight Trend <span id="stats-week-label"></span></div>
+      <div class="chart-container"><canvas id="chart-weight"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Calories</div>
+      <div class="chart-container"><canvas id="chart-calories"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Macros (7-day avg)</div>
+      <div class="chart-container" style="height:180px;"><canvas id="chart-macros"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Energy &amp; Mood</div>
+      <div class="chart-container"><canvas id="chart-wellbeing"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Training Frequency</div>
+      <div class="chart-container" style="height:160px;"><canvas id="chart-training-freq"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Weekly Summary</div>
+      <div id="weekly-summary"></div>
+    </div>
+  </div>
+
+  <!-- GOALS -->
+  <div class="page" id="page-goals">
+    <button class="btn btn-primary btn-full" id="add-goal-btn" style="margin-bottom:14px;">+ Add Goal</button>
+    <div id="goals-list"></div>
+  </div>
+</main>
+
+<!-- Bottom Nav -->
+<nav id="bottom-nav">
+  <button class="nav-tab active" data-page="dashboard" onclick="switchPage('dashboard',this)">
+    <span class="nav-icon">⚡</span>Dashboard
+  </button>
+  <button class="nav-tab" data-page="daily" onclick="switchPage('daily',this)">
+    <span class="nav-icon">📋</span>Daily
+  </button>
+  <button class="nav-tab" data-page="training" onclick="switchPage('training',this)">
+    <span class="nav-icon">💪</span>Training
+  </button>
+  <button class="nav-tab" data-page="stats" onclick="switchPage('stats',this)">
+    <span class="nav-icon">📊</span>Stats
+  </button>
+  <button class="nav-tab" data-page="goals" onclick="switchPage('goals',this)">
+    <span class="nav-icon">🎯</span>Goals
+  </button>
+</nav>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Goal Modal -->
+<div class="modal-overlay" id="goal-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="goal-modal-title">Add Goal</div>
+    <div class="field">
+      <label>Goal Name</label>
+      <input type="text" id="goal-name" placeholder="e.g. Bench Press 225 lbs">
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <select id="goal-type">
+        <option value="weight">Target Weight</option>
+        <option value="lift">Lift PR</option>
+        <option value="cardio">Cardio</option>
+        <option value="habit">Habit / Other</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Current</label>
+        <input type="number" id="goal-current" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Target</label>
+        <input type="number" id="goal-target" placeholder="100">
+      </div>
+    </div>
+    <div class="field">
+      <label>Unit</label>
+      <input type="text" id="goal-unit" placeholder="lbs, miles, days...">
+    </div>
+    <div class="field">
+      <label>Target Date (optional)</label>
+      <input type="date" id="goal-deadline" style="color-scheme:dark;">
+    </div>
+    <input type="hidden" id="goal-edit-id">
+    <div class="row" style="margin-top:8px;">
+      <button class="btn btn-ghost btn-full" onclick="closeGoalModal()">Cancel</button>
+      <button class="btn btn-primary btn-full" id="save-goal-btn" onclick="saveGoal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Training History Modal -->
+<div class="modal-overlay" id="training-detail-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="td-title"></div>
+    <div id="td-content"></div>
+    <button class="btn btn-ghost btn-full" style="margin-top:12px;" onclick="closeModal('training-detail-modal')">Close</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATABASE
+// ═══════════════════════════════════════════════════════════
+const DB_NAME = 'FitTrack';
+const DB_VER  = 1;
+let db;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('daily'))    d.createObjectStore('daily',    { keyPath: 'date' });
+      if (!d.objectStoreNames.contains('workouts')) d.createObjectStore('workouts', { keyPath: 'id', autoIncrement: true });
+      if (!d.objectStoreNames.contains('cardio'))   d.createObjectStore('cardio',   { keyPath: 'id', autoIncrement: true });
+      if (!d.objectStoreNames.contains('goals'))    d.createObjectStore('goals',    { keyPath: 'id', autoIncrement: true });
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+function dbPut(store, obj) {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(obj);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+function dbDelete(store, key) {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(key);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+function dbGetAll(store) {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+function dbGetRange(store, lower, upper) {
+  return new Promise((res, rej) => {
+    const tx    = db.transaction(store, 'readonly');
+    const range = IDBKeyRange.bound(lower, upper);
+    const req   = tx.objectStore(store).getAll(range);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATE UTILITIES
+// ═══════════════════════════════════════════════════════════
+let currentDate = new Date();
+currentDate.setHours(0,0,0,0);
+
+function dateKey(d = currentDate) {
+  return d.toISOString().split('T')[0];
+}
+function fmtDate(d) {
+  return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+}
+function fmtDateLong(d) {
+  return d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+}
+function addDays(d, n) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+function getWeekDates(refDate = currentDate) {
+  const dates = [];
+  for (let i = 6; i >= 0; i--) dates.push(addDays(refDate, -i));
+  return dates;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+let activePage = 'dashboard';
+let trainActiveTab = 'strength';
+
+function switchPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  activePage = name;
+  document.getElementById('main-content').scrollTop = 0;
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'daily')     loadDailyLog();
+  if (name === 'training')  loadTrainingPage();
+  if (name === 'stats')     renderStats();
+  if (name === 'goals')     renderGoals();
+}
+
+function switchTrainTab(tab) {
+  trainActiveTab = tab;
+  ['strength','cardio','history'].forEach(t => {
+    document.getElementById('train-tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('train-panel-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'history') renderTrainingHistory();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HEADER DATE
+// ═══════════════════════════════════════════════════════════
+function updateHeader() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const isToday = currentDate.getTime() === today.getTime();
+  document.getElementById('header-date').textContent = isToday ? 'Today' : fmtDate(currentDate);
+}
+document.getElementById('prev-day').addEventListener('click', () => {
+  currentDate = addDays(currentDate, -1);
+  updateHeader();
+  const p = activePage;
+  if (p === 'dashboard') renderDashboard();
+  if (p === 'daily')     loadDailyLog();
+  if (p === 'training')  loadTrainingPage();
+});
+document.getElementById('next-day').addEventListener('click', () => {
+  const tomorrow = addDays(new Date(), 1); tomorrow.setHours(0,0,0,0);
+  if (currentDate < tomorrow) {
+    currentDate = addDays(currentDate, 1);
+    updateHeader();
+    const p = activePage;
+    if (p === 'dashboard') renderDashboard();
+    if (p === 'daily')     loadDailyLog();
+    if (p === 'training')  loadTrainingPage();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || 'var(--accent)';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DAILY LOG
+// ═══════════════════════════════════════════════════════════
+async function loadDailyLog() {
+  const data = await dbGet('daily', dateKey()) || {};
+  const fields = ['weight','bodyfat','calories','water','protein','carbs','fat','sleep','notes'];
+  fields.forEach(f => {
+    const el = document.getElementById('dl-' + f);
+    if (el) el.value = data[f] != null ? data[f] : '';
+  });
+  ['energy','mood','stress'].forEach(f => {
+    const sl = document.getElementById('dl-' + f);
+    const vl = document.getElementById('dl-' + f + '-val');
+    if (sl && data[f]) { sl.value = data[f]; if (vl) vl.textContent = data[f]; }
+    else if (sl) { sl.value = 5; if (vl) vl.textContent = 5; }
+  });
+  const sq = document.getElementById('dl-sleep-quality');
+  if (sq) sq.value = data.sleep_quality || '';
+}
+
+['energy','mood','stress'].forEach(f => {
+  const sl = document.getElementById('dl-' + f);
+  const vl = document.getElementById('dl-' + f + '-val');
+  if (sl && vl) sl.addEventListener('input', () => { vl.textContent = sl.value; });
+});
+
+document.getElementById('save-daily-btn').addEventListener('click', async () => {
+  const data = { date: dateKey() };
+  const numFields = ['weight','bodyfat','calories','water','protein','carbs','fat','sleep','energy','mood','stress'];
+  numFields.forEach(f => {
+    const el = document.getElementById('dl-' + f);
+    if (el && el.value !== '') data[f] = parseFloat(el.value);
+  });
+  data.sleep_quality = document.getElementById('dl-sleep-quality').value;
+  data.notes         = document.getElementById('dl-notes').value;
+  await dbPut('daily', data);
+  showToast('Daily log saved ✓');
+  if (activePage === 'dashboard') renderDashboard();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  TRAINING LOG — STRENGTH
+// ═══════════════════════════════════════════════════════════
+let exercises = [];
+let cardioBlocks = [];
+
+function makeExercise() {
+  return { id: Date.now() + Math.random(), name: '', sets: [{ reps:'', weight:'', rir:'' }] };
+}
+function makeCardio() {
+  return { id: Date.now() + Math.random(), type: 'Running', duration:'', distance:'', calories:'' };
+}
+
+function renderExercises() {
+  const c = document.getElementById('exercises-container');
+  c.innerHTML = '';
+  exercises.forEach((ex, ei) => {
+    const block = document.createElement('div');
+    block.className = 'exercise-block';
+    block.innerHTML = `
+      <div class="exercise-name-row">
+        <input type="text" value="${escHtml(ex.name)}" placeholder="Exercise name..."
+          style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:15px;font-weight:700;color:var(--text);flex:1;outline:none;"
+          onchange="exercises[${ei}].name=this.value">
+        <button class="btn btn-danger btn-sm" style="margin-left:8px;" onclick="removeExercise(${ei})">✕</button>
+      </div>
+      <table class="sets-table">
+        <thead><tr>
+          <th style="width:28px;">Set</th>
+          <th>Reps</th>
+          <th>Weight</th>
+          <th>RIR</th>
+          <th style="width:28px;"></th>
+        </tr></thead>
+        <tbody id="sets-${ei}">
+        </tbody>
+      </table>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px;width:100%;" onclick="addSet(${ei})">+ Add Set</button>
+    `;
+    c.appendChild(block);
+    renderSets(ei);
+  });
+}
+
+function renderSets(ei) {
+  const tbody = document.getElementById('sets-' + ei);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const ex = exercises[ei];
+  ex.sets.forEach((s, si) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="set-num">${si+1}</td>
+      <td><input type="number" value="${s.reps}" placeholder="—" onchange="exercises[${ei}].sets[${si}].reps=this.value"></td>
+      <td><input type="number" value="${s.weight}" placeholder="—" onchange="exercises[${ei}].sets[${si}].weight=this.value"></td>
+      <td><input type="number" value="${s.rir}" placeholder="—" onchange="exercises[${ei}].sets[${si}].rir=this.value"></td>
+      <td><button class="del-set-btn" onclick="removeSet(${ei},${si})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function addSet(ei) {
+  exercises[ei].sets.push({ reps:'', weight:'', rir:'' });
+  renderSets(ei);
+}
+function removeSet(ei, si) {
+  if (exercises[ei].sets.length > 1) {
+    exercises[ei].sets.splice(si, 1);
+    renderSets(ei);
+  }
+}
+function removeExercise(ei) {
+  exercises.splice(ei, 1);
+  renderExercises();
+}
+
+document.getElementById('add-exercise-btn').addEventListener('click', () => {
+  exercises.push(makeExercise());
+  renderExercises();
+  document.getElementById('main-content').scrollTo({ top: 9999, behavior: 'smooth' });
+});
+
+document.getElementById('save-training-btn').addEventListener('click', async () => {
+  const validEx = exercises.filter(e => e.name.trim());
+  if (!validEx.length) { showToast('Add at least one exercise', 'var(--red)'); return; }
+  const workout = {
+    date:      dateKey(),
+    type:      document.getElementById('wk-type').value,
+    duration:  parseInt(document.getElementById('wk-duration').value) || 0,
+    notes:     document.getElementById('wk-notes').value,
+    exercises: validEx,
+    ts:        Date.now()
+  };
+  await dbPut('workouts', workout);
+  exercises = [];
+  renderExercises();
+  document.getElementById('wk-duration').value = '';
+  document.getElementById('wk-notes').value = '';
+  showToast('Workout saved ✓');
+});
+
+// ─── Cardio ───
+function renderCardioBlocks() {
+  const c = document.getElementById('cardio-container');
+  c.innerHTML = '';
+  cardioBlocks.forEach((cb, ci) => {
+    const block = document.createElement('div');
+    block.className = 'cardio-block';
+    block.innerHTML = `
+      <div class="cardio-header">
+        <select onchange="cardioBlocks[${ci}].type=this.value" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:14px;font-weight:700;outline:none;">
+          ${['Running','Walking','Cycling','Swimming','Rowing','HIIT','Elliptical','Jump Rope','Other'].map(t=>`<option ${cb.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <button class="btn btn-danger btn-sm" onclick="cardioBlocks.splice(${ci},1);renderCardioBlocks()">✕</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Duration (min)</label>
+          <input type="number" value="${cb.duration}" placeholder="30" onchange="cardioBlocks[${ci}].duration=this.value">
+        </div>
+        <div class="field">
+          <label>Distance</label>
+          <input type="number" value="${cb.distance}" placeholder="3.1" step="0.01" onchange="cardioBlocks[${ci}].distance=this.value">
+        </div>
+        <div class="field">
+          <label>Calories</label>
+          <input type="number" value="${cb.calories}" placeholder="300" onchange="cardioBlocks[${ci}].calories=this.value">
+        </div>
+      </div>
+    `;
+    c.appendChild(block);
+  });
+}
+
+document.getElementById('add-cardio-btn').addEventListener('click', () => {
+  cardioBlocks.push(makeCardio());
+  renderCardioBlocks();
+});
+document.getElementById('save-cardio-btn').addEventListener('click', async () => {
+  const valid = cardioBlocks.filter(c => c.duration || c.distance);
+  if (!valid.length) { showToast('Add cardio details', 'var(--red)'); return; }
+  await dbPut('cardio', { date: dateKey(), sessions: valid, ts: Date.now() });
+  cardioBlocks = [];
+  renderCardioBlocks();
+  showToast('Cardio saved ✓');
+});
+
+async function loadTrainingPage() {
+  exercises = [];
+  cardioBlocks = [];
+  renderExercises();
+  renderCardioBlocks();
+  if (trainActiveTab === 'history') renderTrainingHistory();
+}
+
+// ─── Training History ───
+async function renderTrainingHistory() {
+  const [workouts, cardios] = await Promise.all([dbGetAll('workouts'), dbGetAll('cardio')]);
+  const list = document.getElementById('training-history-list');
+  if (!workouts.length && !cardios.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🏋️</div><p>No training history yet</p></div>';
+    return;
+  }
+  const all = [
+    ...workouts.map(w => ({ ...w, kind:'workout' })),
+    ...cardios.map(c => ({ ...c, kind:'cardio' }))
+  ].sort((a,b) => (b.ts||0) - (a.ts||0));
+
+  list.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+  all.slice(0,20).forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'history-item';
+    row.style.cursor = 'pointer';
+    if (item.kind === 'workout') {
+      const vol = item.exercises.reduce((s,e) => s + e.sets.filter(st=>st.weight&&st.reps).reduce((ss,st)=>ss+(parseFloat(st.weight)*parseFloat(st.reps)),0),0);
+      row.innerHTML = `<div><div style="font-weight:700;">${item.type}</div><div class="history-date">${item.date}</div></div><div class="history-vals"><div>${item.exercises.length} exercises</div><div style="color:var(--text3)">${vol>0?Math.round(vol).toLocaleString()+' lbs vol':'—'}</div></div>`;
+      row.onclick = () => showWorkoutDetail(item);
+    } else {
+      const total = item.sessions.reduce((s,c)=>s+(parseFloat(c.duration)||0),0);
+      row.innerHTML = `<div><div style="font-weight:700;">Cardio</div><div class="history-date">${item.date}</div></div><div class="history-vals"><div>${item.sessions.length} session${item.sessions.length!==1?'s':''}</div><div style="color:var(--text3)">${total} min</div></div>`;
+    }
+    card.appendChild(row);
+  });
+  list.appendChild(card);
+}
+
+function showWorkoutDetail(w) {
+  document.getElementById('td-title').textContent = `${w.type} — ${w.date}`;
+  let html = '';
+  if (w.duration) html += `<p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Duration: ${w.duration} min</p>`;
+  w.exercises.forEach(ex => {
+    html += `<div style="margin-bottom:12px;"><div style="font-weight:700;margin-bottom:6px;">${escHtml(ex.name)}</div>`;
+    ex.sets.filter(s=>s.reps||s.weight).forEach((s,i) => {
+      html += `<div style="font-size:13px;color:var(--text2);padding:3px 0;">Set ${i+1}: ${s.weight||'BW'} lbs × ${s.reps} reps${s.rir!==''&&s.rir!=null?' (RIR '+s.rir+')':''}</div>`;
+    });
+    html += '</div>';
+  });
+  if (w.notes) html += `<div style="font-size:13px;color:var(--text2);margin-top:8px;">${escHtml(w.notes)}</div>`;
+  document.getElementById('td-content').innerHTML = html;
+  openModal('training-detail-modal');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+async function renderDashboard() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const isToday = currentDate.getTime() === today.getTime();
+
+  const hour = new Date().getHours();
+  let greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('dash-greeting').textContent = greet + ' 👋';
+  document.getElementById('dash-date-full').textContent = fmtDateLong(currentDate);
+
+  const [daily, allWorkouts, allCardios, goals] = await Promise.all([
+    dbGet('daily', dateKey()),
+    dbGetAll('workouts'),
+    dbGetAll('cardio'),
+    dbGetAll('goals')
+  ]);
+
+  const d = daily || {};
+  const todayWorkouts = allWorkouts.filter(w => w.date === dateKey());
+  const todayCardio   = allCardios.filter(c => c.date === dateKey());
+
+  // KPIs
+  const kpiEl = document.getElementById('dash-kpis');
+  const kpis = [
+    { val: d.weight ? d.weight + '<span style="font-size:12px;font-weight:400;color:var(--text2);"> lbs</span>' : '—', label: 'Weight', color: 'var(--accent)' },
+    { val: d.calories ? d.calories.toLocaleString() : '—', label: 'Calories', color: 'var(--accent4)' },
+    { val: d.sleep ? d.sleep + '<span style="font-size:12px;font-weight:400;color:var(--text2);"> hrs</span>' : '—', label: 'Sleep', color: 'var(--accent3)' },
+    { val: d.energy ? d.energy + '/10' : '—', label: 'Energy', color: 'var(--accent2)' },
+  ];
+  kpiEl.innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-val" style="color:${k.color};">${k.val}</div>
+      <div class="kpi-label">${k.label}</div>
+    </div>`).join('');
+
+  // Macros
+  const macroEl = document.getElementById('dash-macros');
+  const goalP = goals.find(g => g.type === 'habit' && g.name.toLowerCase().includes('protein'));
+  const items = [
+    { label:'Protein', val: d.protein||0, color:'var(--accent)', max: 200 },
+    { label:'Carbs',   val: d.carbs||0,   color:'var(--accent4)', max: 300 },
+    { label:'Fat',     val: d.fat||0,     color:'var(--accent2)', max: 100 },
+  ];
+  macroEl.innerHTML = items.map(m => {
+    const pct = Math.min(100, Math.round((m.val/m.max)*100));
+    return `<div class="macro-item">
+      <div class="macro-label">${m.label}</div>
+      <div class="macro-val" style="color:${m.color};">${m.val}<span style="font-size:11px;color:var(--text3);">g</span></div>
+      <div class="macro-bar"><div class="macro-bar-fill" style="width:${pct}%;background:${m.color};"></div></div>
+    </div>`;
+  }).join('');
+
+  // Training
+  const trainEl = document.getElementById('dash-training');
+  if (todayWorkouts.length || todayCardio.length) {
+    let html = '';
+    todayWorkouts.forEach(w => {
+      const vol = w.exercises.reduce((s,e)=>s+e.sets.filter(st=>st.weight&&st.reps).reduce((ss,st)=>ss+(parseFloat(st.weight)*parseFloat(st.reps)),0),0);
+      html += `<div class="history-item"><div><div style="font-weight:700;">${w.type}</div><div style="font-size:12px;color:var(--text2);">${w.exercises.length} exercises${w.duration?' · '+w.duration+' min':''}</div></div><div><span class="pill pill-accent">${vol>0?Math.round(vol/1000*10)/10+'K lbs':w.exercises.length+' ex'}</span></div></div>`;
+    });
+    todayCardio.forEach(c => {
+      const mins = c.sessions.reduce((s,x)=>s+(parseFloat(x.duration)||0),0);
+      html += `<div class="history-item"><div><div style="font-weight:700;">Cardio</div><div style="font-size:12px;color:var(--text2);">${c.sessions.map(x=>x.type).join(', ')}</div></div><div><span class="pill pill-green">${mins} min</span></div></div>`;
+    });
+    trainEl.innerHTML = html;
+  } else {
+    trainEl.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px 0;">No training logged today</div>';
+  }
+
+  // Goals preview
+  const goalsEl = document.getElementById('dash-goals');
+  // Streak calculation
+  let streak = 0;
+  let checkDate = new Date(today);
+  while (true) {
+    const key = dateKey(checkDate);
+    const entry = await dbGet('daily', key);
+    const wk = allWorkouts.find(w => w.date === key);
+    if (entry || wk) { streak++; checkDate = addDays(checkDate, -1); }
+    else break;
+  }
+  let goalsHtml = `<div class="history-item"><div style="font-weight:700;">Current Streak</div><div><span class="pill pill-accent">🔥 ${streak} day${streak!==1?'s':''}</span></div></div>`;
+  const activeGoals = goals.slice(0,3);
+  activeGoals.forEach(g => {
+    const pct = Math.min(100, g.target>0 ? Math.round((g.current/g.target)*100) : 0);
+    goalsHtml += `<div style="margin-top:8px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>${escHtml(g.name)}</span><span style="color:var(--text2);">${g.current}/${g.target} ${escHtml(g.unit||'')}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${pct}%;background:var(--accent);"></div></div></div>`;
+  });
+  if (!goals.length) goalsHtml += '<div style="color:var(--text3);font-size:13px;margin-top:8px;">No goals set — add one in Goals tab</div>';
+  goalsEl.innerHTML = goalsHtml;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATS / CHARTS
+// ═══════════════════════════════════════════════════════════
+const chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+const CHART_DEFAULTS = {
+  color: '#e8e8f0',
+  gridColor: 'rgba(255,255,255,0.05)',
+  font: { family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', size: 11 }
+};
+
+function baseChartOptions(yLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 400 },
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#1e1e2a', titleColor: '#e8e8f0', bodyColor: '#9898b0', borderColor: '#2e2e3e', borderWidth: 1, padding: 10 }
+    },
+    scales: {
+      x: { grid: { color: CHART_DEFAULTS.gridColor }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font } },
+      y: { grid: { color: CHART_DEFAULTS.gridColor }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font }, title: { display: !!yLabel, text: yLabel, color: '#9898b0' } }
+    }
+  };
+}
+
+async function renderStats() {
+  const weekDates = getWeekDates();
+  const labels    = weekDates.map(d => d.toLocaleDateString('en-US', { weekday:'short', day:'numeric' }));
+  document.getElementById('stats-week-label').textContent = `(${fmtDate(weekDates[0])} – ${fmtDate(weekDates[6])})`;
+
+  const dailyData = await Promise.all(weekDates.map(d => dbGet('daily', dateKey(d))));
+  const [allWorkouts, allCardios] = await Promise.all([dbGetAll('workouts'), dbGetAll('cardio')]);
+
+  const weights   = dailyData.map(d => d?.weight || null);
+  const calories  = dailyData.map(d => d?.calories || null);
+  const proteins  = dailyData.map(d => d?.protein || 0);
+  const carbs     = dailyData.map(d => d?.carbs || 0);
+  const fats      = dailyData.map(d => d?.fat || 0);
+  const energies  = dailyData.map(d => d?.energy || null);
+  const moods     = dailyData.map(d => d?.mood || null);
+  const trainFreq = weekDates.map(d => {
+    const key = dateKey(d);
+    return (allWorkouts.filter(w=>w.date===key).length + allCardios.filter(c=>c.date===key).length);
+  });
+
+  // Weight chart
+  destroyChart('weight');
+  chartInstances['weight'] = new Chart(document.getElementById('chart-weight'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ data: weights, borderColor: '#6c63ff', backgroundColor: 'rgba(108,99,255,0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#6c63ff', tension: 0.4, spanGaps: true, fill: true }]
+    },
+    options: { ...baseChartOptions('lbs'), plugins: { ...baseChartOptions().plugins, legend: { display: false } } }
+  });
+
+  // Calories chart
+  destroyChart('calories');
+  chartInstances['calories'] = new Chart(document.getElementById('chart-calories'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: calories, backgroundColor: calories.map(c => c ? 'rgba(255,169,77,0.7)' : 'rgba(255,255,255,0.05)'), borderRadius: 6, borderSkipped: false }]
+    },
+    options: baseChartOptions('kcal')
+  });
+
+  // Macros donut
+  const avgP = proteins.filter(Boolean).reduce((s,v)=>s+v,0) / (proteins.filter(Boolean).length||1);
+  const avgC = carbs.filter(Boolean).reduce((s,v)=>s+v,0) / (carbs.filter(Boolean).length||1);
+  const avgF = fats.filter(Boolean).reduce((s,v)=>s+v,0) / (fats.filter(Boolean).length||1);
+  destroyChart('macros');
+  chartInstances['macros'] = new Chart(document.getElementById('chart-macros'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Protein', 'Carbs', 'Fat'],
+      datasets: [{ data: [Math.round(avgP), Math.round(avgC), Math.round(avgF)], backgroundColor: ['rgba(108,99,255,0.8)','rgba(255,169,77,0.8)','rgba(255,101,132,0.8)'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: {
+        legend: { display: true, position: 'right', labels: { color: '#9898b0', font: { size: 11 }, boxWidth: 10, padding: 10 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}g avg` } }
+      },
+      animation: { duration: 400 }
+    }
+  });
+
+  // Energy & Mood
+  destroyChart('wellbeing');
+  chartInstances['wellbeing'] = new Chart(document.getElementById('chart-wellbeing'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Energy', data: energies, borderColor: '#43d9a2', backgroundColor: 'rgba(67,217,162,0.08)', borderWidth: 2, pointRadius: 3, tension: 0.4, spanGaps: true },
+        { label:'Mood',   data: moods,   borderColor: '#ffa94d', backgroundColor: 'rgba(255,169,77,0.08)',  borderWidth: 2, pointRadius: 3, tension: 0.4, spanGaps: true }
+      ]
+    },
+    options: {
+      ...baseChartOptions('Score'),
+      plugins: {
+        legend: { display: true, labels: { color: '#9898b0', font: { size: 11 }, boxWidth: 10, padding: 10 } },
+        tooltip: { backgroundColor: '#1e1e2a', titleColor: '#e8e8f0', bodyColor: '#9898b0', borderColor: '#2e2e3e', borderWidth: 1 }
+      },
+      scales: { ...baseChartOptions().scales, y: { ...baseChartOptions().scales.y, min: 0, max: 10 } }
+    }
+  });
+
+  // Training frequency bar
+  destroyChart('training-freq');
+  chartInstances['training-freq'] = new Chart(document.getElementById('chart-training-freq'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: trainFreq, backgroundColor: trainFreq.map(v => v ? 'rgba(108,99,255,0.7)' : 'rgba(255,255,255,0.05)'), borderRadius: 6 }]
+    },
+    options: { ...baseChartOptions('Sessions'), scales: { ...baseChartOptions().scales, y: { ...baseChartOptions().scales.y, ticks: { ...baseChartOptions().scales.y.ticks, stepSize: 1 } } } }
+  });
+
+  // Weekly summary text
+  const nonNullW = weights.filter(Boolean);
+  const nonNullC = calories.filter(Boolean);
+  const trainDays = trainFreq.filter(Boolean).length;
+  const avgCal = nonNullC.length ? Math.round(nonNullC.reduce((s,v)=>s+v,0)/nonNullC.length) : null;
+  const weightChange = nonNullW.length >= 2 ? (nonNullW[nonNullW.length-1] - nonNullW[0]).toFixed(1) : null;
+  let summaryHtml = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  summaryHtml += `<div class="history-item"><span>Training Days</span><span class="pill pill-accent">${trainDays}/7</span></div>`;
+  if (avgCal) summaryHtml += `<div class="history-item"><span>Avg Calories</span><span style="color:var(--accent4);font-weight:700;">${avgCal.toLocaleString()} kcal</span></div>`;
+  if (weightChange !== null) summaryHtml += `<div class="history-item"><span>Weight Change</span><span style="color:${weightChange<=0?'var(--green)':'var(--red)'};font-weight:700;">${weightChange>0?'+':''}${weightChange} lbs</span></div>`;
+  summaryHtml += `<div class="history-item"><span>Avg Protein</span><span style="color:var(--accent);font-weight:700;">${Math.round(avgP)}g/day</span></div>`;
+  summaryHtml += '</div>';
+  document.getElementById('weekly-summary').innerHTML = summaryHtml;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GOALS
+// ═══════════════════════════════════════════════════════════
+let editingGoalId = null;
+
+document.getElementById('add-goal-btn').addEventListener('click', () => {
+  editingGoalId = null;
+  document.getElementById('goal-modal-title').textContent = 'Add Goal';
+  ['goal-name','goal-current','goal-target','goal-unit','goal-deadline'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('goal-type').value = 'weight';
+  document.getElementById('goal-edit-id').value = '';
+  openModal('goal-modal');
+});
+
+async function saveGoal() {
+  const name    = document.getElementById('goal-name').value.trim();
+  const current = parseFloat(document.getElementById('goal-current').value) || 0;
+  const target  = parseFloat(document.getElementById('goal-target').value) || 0;
+  if (!name || !target) { showToast('Name and target required', 'var(--red)'); return; }
+  const goal = {
+    name,
+    type:     document.getElementById('goal-type').value,
+    current,
+    target,
+    unit:     document.getElementById('goal-unit').value,
+    deadline: document.getElementById('goal-deadline').value,
+    created:  Date.now()
+  };
+  const editId = document.getElementById('goal-edit-id').value;
+  if (editId) goal.id = parseInt(editId);
+  await dbPut('goals', goal);
+  closeGoalModal();
+  renderGoals();
+  showToast(editId ? 'Goal updated ✓' : 'Goal added ✓');
+}
+
+async function renderGoals() {
+  const goals = await dbGetAll('goals');
+  const list  = document.getElementById('goals-list');
+  if (!goals.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div><p>No goals yet. Add your first goal!</p></div>';
+    return;
+  }
+  const typeColors = { weight:'var(--accent)', lift:'var(--accent4)', cardio:'var(--accent3)', habit:'var(--accent2)' };
+  list.innerHTML = goals.map(g => {
+    const pct     = Math.min(100, g.target>0 ? Math.round((g.current/g.target)*100) : 0);
+    const color   = typeColors[g.type] || 'var(--accent)';
+    const daysLeft = g.deadline ? Math.round((new Date(g.deadline) - new Date()) / 86400000) : null;
+    return `<div class="goal-item">
+      <div class="goal-header">
+        <div class="goal-name">${escHtml(g.name)}</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="goal-type-badge" style="background:${color}22;color:${color};">${g.type}</span>
+          <button class="btn btn-ghost btn-sm" onclick="editGoal(${g.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteGoal(${g.id})">✕</button>
+        </div>
+      </div>
+      <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div class="goal-meta">
+        <span>${g.current} / ${g.target} ${escHtml(g.unit||'')}</span>
+        <span style="color:${color};font-weight:700;">${pct}%</span>
+      </div>
+      ${daysLeft !== null ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;">${daysLeft > 0 ? daysLeft + ' days left' : daysLeft === 0 ? 'Due today!' : Math.abs(daysLeft) + ' days overdue'}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function editGoal(id) {
+  const g = await dbGet('goals', id);
+  if (!g) return;
+  document.getElementById('goal-modal-title').textContent = 'Edit Goal';
+  document.getElementById('goal-name').value    = g.name;
+  document.getElementById('goal-type').value    = g.type;
+  document.getElementById('goal-current').value = g.current;
+  document.getElementById('goal-target').value  = g.target;
+  document.getElementById('goal-unit').value    = g.unit || '';
+  document.getElementById('goal-deadline').value= g.deadline || '';
+  document.getElementById('goal-edit-id').value = id;
+  openModal('goal-modal');
+}
+
+async function deleteGoal(id) {
+  await dbDelete('goals', id);
+  renderGoals();
+  showToast('Goal deleted', 'var(--red)');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODALS
+// ═══════════════════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+function closeGoalModal() {
+  closeModal('goal-modal');
+}
+document.getElementById('goal-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('goal-modal')) closeGoalModal();
+});
+document.getElementById('training-detail-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('training-detail-modal')) closeModal('training-detail-modal');
+});
+
+// ═══════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+async function init() {
+  await openDB();
+  updateHeader();
+  renderDashboard();
+}
+
+init().catch(console.error);
+</script>
+</body>
+</html>
